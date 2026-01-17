@@ -1,4 +1,8 @@
+"use client";
+
 import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,14 +11,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"; // kept as requested
+
 import { GeneratedAvatar } from "@/components/generated-avatar";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { CreditCardIcon, LogOutIcon } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile"; // ✅ added
 
 export const DashboardUserButton = () => {
   const router = useRouter();
-  const { data } = authClient.useSession();
+  const { data, isPending } = authClient.useSession();
+  const isMobile = useIsMobile(); // ✅ added
 
   const onLogout = async () => {
     await authClient.signOut({
@@ -26,45 +42,89 @@ export const DashboardUserButton = () => {
     });
   };
 
+  if (isPending) return null;
+
+  // 📱 MOBILE → Drawer
+  if (isMobile) {
+    return (
+      <Drawer>
+        <DrawerTrigger className="outline-none">
+          <Avatar className="size-10 border">
+            {data?.user.image ? (
+              <AvatarImage src={data.user.image} />
+            ) : (
+              <GeneratedAvatar
+                seed={data?.user.name || "User"}
+                variant="initials"
+              />
+            )}
+          </Avatar>
+        </DrawerTrigger>
+
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{data?.user.name}</DrawerTitle>
+            <DrawerDescription>{data?.user.email}</DrawerDescription>
+          </DrawerHeader>
+
+          <DrawerFooter>
+            <Button variant="outline" className="flex gap-2">
+              <CreditCardIcon className="size-4" />
+              Billing
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={onLogout}
+              className="flex gap-2 text-destructive"
+            >
+              <LogOutIcon className="size-4" />
+              Logout
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // 🖥️ DESKTOP → Dropdown
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-lg border border-border/10 p-3 w-full flex items-center justify-between bg-white/5 hover:bg-white/10 overflow-hidden">
-        {data?.user.image ? (
-          <Avatar className="size-9 mr-3">
+      <DropdownMenuTrigger className="outline-none">
+        <Avatar className="size-10 border">
+          {data?.user.image ? (
             <AvatarImage src={data.user.image} />
-          </Avatar>
-        ) : (
-          <GeneratedAvatar
-            seed={data?.user.name}
-            variant="initials"
-            className="size-9 mr-3"
-          />
-        )}
-        <div className="flex flex-col gap-0.5 text-left overflow-hidden flex-1 min-w-0">
-          <p className="text-sm truncate w-full">{data?.user.name}</p>
-          <p className="text-xs truncate w-full text-muted-foreground">
-            {data?.user.email}
-          </p>
-        </div>
+          ) : (
+            <GeneratedAvatar
+              seed={data?.user.name || "User"}
+              variant="initials"
+            />
+          )}
+        </Avatar>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" side="right" className="w-72">
-        <DropdownMenuLabel>
-          <div className="flex flex-col gap-1">
-            <span className="font-medium truncate">{data?.user.name}</span>
-            <span className="text-sm font-normal text-muted-foreground truncate">
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none truncate">
+              {data?.user.name}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
               {data?.user.email}
-            </span>
+            </p>
           </div>
         </DropdownMenuLabel>
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer flex items-center justify-between">
+
+        <DropdownMenuItem className="flex items-center justify-between">
           Billing
           <CreditCardIcon className="size-4" />
         </DropdownMenuItem>
+
         <DropdownMenuItem
           onClick={onLogout}
-          className="cursor-pointer flex items-center justify-between"
+          className="flex items-center justify-between text-destructive focus:text-destructive"
         >
           Logout
           <LogOutIcon className="size-4" />
