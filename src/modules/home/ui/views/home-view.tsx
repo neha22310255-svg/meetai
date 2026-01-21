@@ -1,66 +1,36 @@
 // "use client";
 
-// import { authClient } from "@/lib/auth-client";
-// import { Button } from "@/components/ui/button";
-// import { useRouter } from "next/navigation";
+// import { trpc } from "@/trpc/client";
 
 // export const HomeView = () => {
-//   const router = useRouter();
-//   const { data: session } = authClient.useSession();
+//   const { data, isLoading, error } = trpc.hello.useQuery({
+//     text: "Antonio",
+//   });
 
-//   if (!session) {
-//     return <p>Loading...</p>;
+//   if (isLoading) {
+//     return <div className="p-4">Loading...</div>;
 //   }
 
-//   return (
-//     <div className="flex flex-col p-4 gap-y-4">
-//       <p>Logged in as {session.user.name}</p>
-//       <Button
-//         onClick={() =>
-//           authClient.signOut({
-//             fetchOptions: {
-//               onSuccess: () => router.push("/sign-in"),
-//             },
-//           })
-//         }
-//       >
-//         Sign out
-//       </Button>
-//     </div>
-//   );
-// };
+//   if (error) {
+//     return <div className="p-4 text-red-500">Something went wrong</div>;
+//   }
 
-// export default HomeView;
+//   return <div className="flex flex-col p-4 gap-y-4">{data?.greeting}</div>;
+// };
 
 "use client";
 
-import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { trpc } from "@/trpc/client"; // use the exported 'trpc' instance
+import { useQuery } from "@tanstack/react-query";
 
-interface HomeViewProps {
-  session: any; // Replace 'any' with your session type if available
-}
-
-export const HomeView = ({ session }: HomeViewProps) => {
-  const router = useRouter();
+export const HomeView = () => {
+  // Use tRPC's query hook instead of 'useTRPC'
+  const { data } = trpc.hello.useQuery({ text: "Antonio" });
 
   return (
     <div className="flex flex-col p-4 gap-y-4">
-      <p>Logged in as {session.user.name || "Unknown User"}</p>
-      <Button
-        onClick={() =>
-          authClient.signOut({
-            fetchOptions: {
-              onSuccess: () => router.push("/sign-in"),
-            },
-          })
-        }
-      >
-        Sign out
-      </Button>
+      {data?.greeting}{" "}
+      {/* TypeScript should be happy if your router types are correct */}
     </div>
   );
 };
-
-export default HomeView;
