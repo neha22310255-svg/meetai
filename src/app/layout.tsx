@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+
+import { TRPCReactProvider } from "@/trpc/client";
+
+import { TRPCProvider } from "@/trpc/client";
+
 import "./globals.css";
 
-// Load Google Font
 const inter = Inter({
   subsets: ["latin"],
 });
@@ -19,7 +23,9 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>{children}</body>
+      <body className={`${inter.className} antialiased`}>
+        <TRPCProvider>{children}</TRPCProvider>
+      </body>
     </html>
   );
 }
