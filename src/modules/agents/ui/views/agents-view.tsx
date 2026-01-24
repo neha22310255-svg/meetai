@@ -1,6 +1,8 @@
 "use client";
 
 import { trpc } from "@/trpc/client";
+import { ResponsiveDialog } from "@/components/responsive-dialog";
+import { Button } from "@/components/ui/button";
 
 // Minimal replacements for LoadingState and ErrorState
 const LoadingState = ({

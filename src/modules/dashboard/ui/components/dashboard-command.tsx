@@ -1,6 +1,8 @@
+"use client";
+
 import { Dispatch, SetStateAction } from "react";
 import {
-  CommandDialog,
+  CommandResponsiveDialog,
   CommandInput,
   CommandItem,
   CommandList,
@@ -13,11 +15,17 @@ interface Props {
 
 export const DashboardCommand = ({ open, setOpen }: Props) => {
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Command Palette"
+      description="Find a meeting or agent"
+    >
       <CommandInput placeholder="Find a meeting or agent" />
       <CommandList>
         <CommandItem>Test</CommandItem>
+        <CommandItem>Test2</CommandItem>
       </CommandList>
-    </CommandDialog>
+    </CommandResponsiveDialog>
   );
 };
