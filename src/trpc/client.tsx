@@ -49,5 +49,5 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ✅ alias for your sir’s naming */
+/* ✅ alias for your sir's naming */
 export { TRPCProvider as TRPCReactProvider };
