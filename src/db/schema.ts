@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { createInsertSchema } from "drizzle-zod";
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -82,4 +83,11 @@ export const agents = pgTable("agents", {
   instructions: text("instructions").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const agentsInsertSchema = createInsertSchema(agents).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
 });
