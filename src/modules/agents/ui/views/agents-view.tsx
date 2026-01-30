@@ -2,82 +2,48 @@
 
 import { trpc } from "@/trpc/client";
 
-// Simple fallback components
-const ErrorState = ({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) => (
-  <div className="p-4 text-center border border-red-200 rounded-lg bg-red-50">
-    <h2 className="text-xl font-semibold text-red-700 mb-2">{title}</h2>
-    <p className="text-red-600">{description}</p>
-  </div>
-);
+import { ErrorState } from "@/components/error-state";
+import { LoadingState } from "@/components/loading-state";
+import { EmptyState } from "@/components/empty-state";
 
-const LoadingState = ({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) => (
-  <div className="p-4 text-center border border-blue-200 rounded-lg bg-blue-50">
-    <h2 className="text-xl font-semibold text-blue-700 mb-2">{title}</h2>
-    <p className="text-blue-600 mb-3">{description}</p>
-    <div className="flex justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
-    </div>
-  </div>
-);
+import { DataTable } from "../components/data-table";
+import { columns } from "../components/columns";
 
 export const AgentsView = () => {
-  const { data, isLoading, isError, error } = trpc.agents.getMany.useQuery();
+  const [data] = trpc.agents.getMany.useSuspenseQuery();
 
-  if (isLoading) {
+  if (!data || data.length === 0) {
     return (
-      <LoadingState
-        title="Loading Agents"
-        description="This may take a few seconds"
-      />
-    );
-  }
-
-  if (isError) {
-    console.error("Error loading agents:", error);
-    return (
-      <ErrorState
-        title="Error Loading Agents"
-        description={error.message || "Something went wrong"}
-      />
+      <div className="flex-1 pb-4 px-4 md:px-8 flex items-center justify-center">
+        <EmptyState
+          title="Create your first agent"
+          description="Create an agent to join your meetings. Each agent will follow your instructions and can interact with participants during the call."
+        />
+      </div>
     );
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Agents</h1>
-      <pre className="bg-gray-100 p-4 rounded-lg overflow-auto text-sm">
-        {JSON.stringify(data, null, 2)}
-      </pre>
+    <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
+      <DataTable data={data} columns={columns} />
     </div>
   );
 };
 
-export const AgentsViewLoading = () => {
-  return (
+export const AgentsViewLoading = () => (
+  <div className="flex-1 pb-4 px-4 md:px-8 flex items-center justify-center">
     <LoadingState
       title="Loading Agents"
       description="This may take a few seconds"
     />
-  );
-};
+  </div>
+);
 
-export const AgentsViewError = () => {
-  return (
+export const AgentsViewError = () => (
+  <div className="flex-1 pb-4 px-4 md:px-8 flex items-center justify-center">
     <ErrorState
       title="Error Loading Agents"
-      description="Something went wrong"
+      description="Something went wrong while loading agents"
     />
-  );
-};
+  </div>
+);
