@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   ColumnDef,
   flexRender,
@@ -7,26 +8,12 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+type DataTableProps<TData> = {
   data: TData[];
-  onRowClick?: (row: TData) => void;
-}
+  columns: ColumnDef<TData, any>[];
+};
 
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-  onRowClick,
-}: DataTableProps<TData, TValue>) {
+export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
     columns,
@@ -34,54 +21,39 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="rounded-lg border bg-background overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {table
-              .getHeaderGroups()
-              .map((headerGroup) =>
-                headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                )),
-              )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                className={onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}
-                onClick={() => onRowClick?.(row.original)}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="text-sm p-4">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="h-24 text-center text-muted-foreground"
-              >
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+    <div className="rounded-md border">
+      <table className="min-w-full text-sm">
+        <thead className="bg-muted">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th key={header.id} className="px-4 py-3 text-left font-medium">
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+
+        <tbody>
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="border-t">
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className="px-4 py-3">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
+
+export default DataTable;

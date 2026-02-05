@@ -1,4 +1,3 @@
-// /src/app/dashboard/agents/components/ErrorState.tsx
 import Image from "next/image";
 
 interface Props {
