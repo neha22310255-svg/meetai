@@ -11,9 +11,14 @@ import {
 type DataTableProps<TData> = {
   data: TData[];
   columns: ColumnDef<TData, any>[];
+  onRowClick?: (row: TData) => void;
 };
 
-export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
+export const DataTable = <TData,>({
+  data,
+  columns,
+  onRowClick,
+}: DataTableProps<TData>) => {
   const table = useReactTable({
     data,
     columns,
@@ -21,9 +26,9 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
   });
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border bg-card">
       <table className="min-w-full text-sm">
-        <thead className="bg-muted">
+        <thead className="bg-muted/50">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -39,10 +44,15 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
             </tr>
           ))}
         </thead>
-
-        <tbody>
+        <tbody className="divide-y">
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-t">
+            <tr
+              key={row.id}
+              className={`transition-colors ${
+                onRowClick ? "cursor-pointer hover:bg-muted/50" : ""
+              }`}
+              onClick={() => onRowClick?.(row.original)}
+            >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-4 py-3">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -54,6 +64,4 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
       </table>
     </div>
   );
-}
-
-export default DataTable;
+};
