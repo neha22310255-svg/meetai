@@ -11,6 +11,9 @@ import type { AppRouter } from "./routers/_app";
 
 export const trpc = createTRPCReact<AppRouter>();
 
+// ✅ Add this single line - alias for convenience
+export const api = trpc;
+
 let clientQueryClientSingleton: QueryClient;
 
 function getQueryClient() {

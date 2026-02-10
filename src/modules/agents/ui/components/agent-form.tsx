@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { trpc } from "@/trpc/client";
 import { agentsInsertSchema } from "@/db/schema";
-
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +33,6 @@ interface AgentFormProps {
   initialValues?: AgentGetOne;
 }
 
-// Create a stricter validation schema
 const agentFormSchema = agentsInsertSchema.extend({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
   instructions: z
@@ -43,55 +41,69 @@ const agentFormSchema = agentsInsertSchema.extend({
     .max(5000, "Instructions are too long"),
 });
 
+type AgentFormValues = z.infer<typeof agentFormSchema>;
+
 export const AgentForm = ({
   onSuccess,
   onCancel,
   initialValues,
 }: AgentFormProps) => {
   const router = useRouter();
+  const utils = trpc.useUtils();
 
-  const form = useForm<z.infer<typeof agentFormSchema>>({
+  const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
     defaultValues: {
       name: initialValues?.name ?? "",
       instructions: initialValues?.instructions ?? "",
     },
-    mode: "onChange", // Validate on change for immediate feedback
+    mode: "onChange",
   });
 
   const isEdit = !!initialValues?.id;
 
   const createAgent = trpc.agents.create.useMutation({
-    onSuccess: () => {
-      form.reset(); // Reset form after successful submission
-      onSuccess?.();
-      router.refresh();
+    onSuccess: async () => {
+      toast.success("Agent created successfully");
+      form.reset();
+      await utils.agents.getMany.invalidate();
+      onSuccess?.() || router.push("/agents");
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create agent");
-
-      // Check if error code is "FORBIDDEN", redirect to /upgrade
-      if (error.data?.code === "FORBIDDEN") {
-        router.push("/upgrade");
-      }
+      if (error.data?.code === "FORBIDDEN") router.push("/upgrade");
     },
   });
 
-  const isPending = createAgent.isPending;
+  const updateAgent = trpc.agents.update.useMutation({
+    onSuccess: async () => {
+      toast.success("Agent updated successfully");
+      await utils.agents.getMany.invalidate();
+      if (initialValues?.id) {
+        await utils.agents.getOne.invalidate({ id: initialValues.id });
+      }
+      onSuccess?.() || router.push("/agents");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update agent");
+    },
+  });
 
-  const onSubmit = (values: z.infer<typeof agentFormSchema>) => {
-    createAgent.mutate(values);
+  const isLoading = createAgent.isPending || updateAgent.isPending;
+
+  const onSubmit = (values: AgentFormValues) => {
+    if (isEdit && initialValues?.id) {
+      updateAgent.mutate({ id: initialValues.id, ...values });
+    } else {
+      createAgent.mutate(values);
+    }
   };
-
-  // Check if form is valid for button disable state
-  const isFormValid = form.formState.isValid;
-  const hasErrors = Object.keys(form.formState.errors).length > 0;
 
   return (
     <Form {...form}>
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <GeneratedAvatar
-          seed={form.watch("name")}
+          seed={form.watch("name") || "default"}
           variant="botttsNeutral"
           className="border size-16"
         />
@@ -104,17 +116,16 @@ export const AgentForm = ({
               <FormLabel>Name</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="e.g. Data Science Tutor"
                   {...field}
-                  aria-invalid={!!form.formState.errors.name}
+                  placeholder="Enter agent name"
+                  disabled={isLoading}
                 />
               </FormControl>
-              <FormMessage className="text-red-500 text-sm mt-1" />
+              <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Instructions Field */}
         <FormField
           name="instructions"
           control={form.control}
@@ -123,13 +134,13 @@ export const AgentForm = ({
               <FormLabel>Instructions</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="e.g. Provide clear, step-by-step guidance on Python and data science concepts"
                   {...field}
-                  aria-invalid={!!form.formState.errors.instructions}
                   className="min-h-32"
+                  placeholder="Enter instructions for the agent"
+                  disabled={isLoading}
                 />
               </FormControl>
-              <FormMessage className="text-red-500 text-sm mt-1" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -137,29 +148,22 @@ export const AgentForm = ({
         <div className="flex justify-between gap-x-2 pt-2">
           {onCancel && (
             <Button
-              variant="ghost"
-              disabled={isPending}
               type="button"
+              variant="ghost"
               onClick={onCancel}
+              disabled={isLoading}
             >
               Cancel
             </Button>
           )}
-          <Button
-            disabled={isPending || !isFormValid || hasErrors}
-            type="submit"
-            className="ml-auto"
-          >
-            {isPending ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                {isEdit ? "Updating..." : "Creating..."}
-              </span>
-            ) : isEdit ? (
-              "Update"
-            ) : (
-              "Create"
-            )}
+          <Button type="submit" className="ml-auto" disabled={isLoading}>
+            {isLoading
+              ? isEdit
+                ? "Updating..."
+                : "Creating..."
+              : isEdit
+                ? "Update"
+                : "Create"}
           </Button>
         </div>
       </form>
