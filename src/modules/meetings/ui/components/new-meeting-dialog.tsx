@@ -23,13 +23,12 @@ export const NewMeetingDialog = ({
       onOpenChange={onOpenChange}
     >
       <MeetingForm
-        onSuccess={(id) => {
+        onSuccess={(meetingId) => {
           onOpenChange(false);
-          // Only redirect to meeting detail if we have an ID
-          if (id) {
-            router.push(`/meetings/${id}`);
+          if (meetingId) {
+            router.push(`/meetings/${meetingId}`);
           } else {
-            router.push("/meetings");
+            router.refresh();
           }
         }}
         onCancel={() => onOpenChange(false)}
