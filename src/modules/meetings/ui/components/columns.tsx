@@ -1,6 +1,9 @@
 "use client";
 
+declare module "humanize-duration";
+
 import { format } from "date-fns";
+import humanizeDuration from "humanize-duration";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   CircleCheckIcon,
@@ -15,23 +18,15 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { GeneratedAvatar } from "@/components/generated-avatar";
 
-import { MeetingGetMany } from "../../../meetings/types"; // Fixed import path
+import { MeetingGetMany } from "../../types";
 
-// Duration formatter without humanize-duration dependency
 function formatDuration(seconds: number | null | undefined) {
   if (!seconds) return "—";
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  }
-  return `${secs}s`;
+  return humanizeDuration(seconds * 1000, {
+    largest: 1,
+    round: true,
+    units: ["h", "m", "s"],
+  });
 }
 
 const statusIconMap = {
@@ -53,24 +48,22 @@ const statusColorMap = {
 export const columns: ColumnDef<MeetingGetMany[number]>[] = [
   {
     accessorKey: "name",
-    header: "Meeting",
+    header: "Agent Name",
     cell: ({ row }) => (
-      <div className="flex items-center gap-x-3">
-        <GeneratedAvatar
-          variant="botttsNeutral"
-          seed={row.original.name}
-          className="size-8"
-        />
-        <div className="flex flex-col gap-y-1">
+      <div className="flex flex-col gap-y-1">
+        <div className="flex items-center gap-x-2">
+          <GeneratedAvatar
+            variant="botttsNeutral"
+            seed={row.original.name}
+            className="size-8"
+          />
           <span className="font-semibold capitalize">{row.original.name}</span>
-          <div className="flex items-center gap-x-2">
-            <div className="flex items-center gap-x-1">
-              <CornerDownRightIcon className="size-3 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground max-w-50 truncate capitalize">
-                {row.original.agent?.name || "No agent"}
-              </span>
-            </div>
-          </div>
+        </div>
+        <div className="flex items-center gap-x-1">
+          <CornerDownRightIcon className="size-3 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground max-w-50 truncate capitalize">
+            {row.original.agent?.name || "No agent"}
+          </span>
         </div>
       </div>
     ),
@@ -82,8 +75,7 @@ export const columns: ColumnDef<MeetingGetMany[number]>[] = [
       const status = row.original.status as keyof typeof statusIconMap;
       const Icon = statusIconMap[status] || ClockArrowUpIcon;
       const colorClass =
-        statusColorMap[status as keyof typeof statusColorMap] ||
-        "bg-gray-500/20 text-gray-800";
+        statusColorMap[status] || "bg-gray-500/20 text-gray-800";
 
       return (
         <Badge

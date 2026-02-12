@@ -1,26 +1,22 @@
 "use client";
 
 import { z } from "zod";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { trpc } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { GeneratedAvatar } from "@/components/generated-avatar";
-import { NewAgentDialog } from "@/modules/agents/ui/components/new-agent-dialog";
-
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -30,214 +26,188 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface MeetingGetOne {
-  id: string;
-  name: string;
-  agentId: string;
-  status: string;
-}
-
-interface MeetingFormProps {
-  onSuccess?: (id?: string) => void;
-  onCancel?: () => void;
-  initialValues?: MeetingGetOne;
-}
-
-const meetingsInsertSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+const meetingFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Meeting name is required")
+    .max(100, "Name is too long"),
   agentId: z.string().min(1, "Please select an agent"),
+  scheduledFor: z.string().optional(),
+  description: z.string().optional(),
 });
 
-export const MeetingForm = ({
-  onSuccess,
-  onCancel,
-  initialValues,
-}: MeetingFormProps) => {
-  const router = useRouter();
+type MeetingFormValues = z.infer<typeof meetingFormSchema>;
+
+interface MeetingFormProps {
+  onSuccess?: (meetingId?: string) => void;
+  onCancel?: () => void;
+}
+
+export const MeetingForm = ({ onSuccess, onCancel }: MeetingFormProps) => {
   const utils = trpc.useUtils();
 
-  const [openNewAgentDialog, setOpenNewAgentDialog] = useState(false);
-  const [agentSearch, setAgentSearch] = useState("");
-
-  const form = useForm<z.infer<typeof meetingsInsertSchema>>({
-    resolver: zodResolver(meetingsInsertSchema),
+  const form = useForm<MeetingFormValues>({
+    resolver: zodResolver(meetingFormSchema),
     defaultValues: {
-      name: initialValues?.name ?? "",
-      agentId: initialValues?.agentId ?? "",
+      name: "",
+      agentId: "",
+      scheduledFor: "",
+      description: "",
     },
   });
 
-  const isEdit = !!initialValues?.id;
+  // Fetch available agents
+  const { data: agentsData } = trpc.agents.getMany.useQuery({
+    page: 1,
+    pageSize: 100,
+  });
 
-  const { data: agentsData, isLoading: agentsLoading } =
-    trpc.agents.getMany.useQuery({
-      page: 1,
-      pageSize: 100,
-      search: agentSearch || undefined,
-    });
+  const agents = agentsData?.items || [];
 
+  // Create meeting mutation
   const createMeeting = trpc.meetings.create.useMutation({
     onSuccess: async (data) => {
-      await utils.meetings.getMany.invalidate();
       toast.success("Meeting created successfully");
-      if (!isEdit) {
-        form.reset();
+      form.reset();
+
+      // Invalidate meetings list
+      await utils.meetings.getMany.invalidate();
+
+      if (onSuccess) {
+        onSuccess(data?.id);
       }
-      onSuccess?.(data.id);
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create meeting");
-      if (error.data?.code === "FORBIDDEN") {
-        router.push("/upgrade");
-      }
     },
   });
 
-  const updateMeeting = trpc.meetings.update.useMutation({
-    onSuccess: async (data) => {
-      toast.success("Meeting updated successfully");
-      await utils.meetings.getMany.invalidate();
-      if (initialValues?.id) {
-        await utils.meetings.getOne.invalidate({ id: initialValues.id });
-      }
-      onSuccess?.(data.id);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update meeting");
-      if (error.data?.code === "FORBIDDEN") {
-        router.push("/upgrade");
-      }
-    },
-  });
-
-  const isPending =
-    createMeeting.isPending || updateMeeting.isPending || agentsLoading;
-
-  const onSubmit = (values: z.infer<typeof meetingsInsertSchema>) => {
-    if (isEdit && initialValues?.id) {
-      updateMeeting.mutate({ ...values, id: initialValues.id });
-    } else {
-      createMeeting.mutate(values);
-    }
+  const onSubmit = (values: MeetingFormValues) => {
+    createMeeting.mutate({
+      name: values.name,
+      agentId: values.agentId,
+      scheduledFor: values.scheduledFor || undefined,
+      description: values.description || undefined,
+    });
   };
 
-  const getAgentEmoji = (name: string) => {
-    const agentName = name.toLowerCase();
-    if (agentName.includes("math") || agentName.includes("tutor")) return "📚";
-    if (agentName.includes("code") || agentName.includes("program"))
-      return "💻";
-    if (agentName.includes("sales") || agentName.includes("business"))
-      return "💰";
-    if (agentName.includes("support") || agentName.includes("help"))
-      return "🛟";
-    if (agentName.includes("creative") || agentName.includes("design"))
-      return "🎨";
-    return "🤖";
-  };
+  const isLoading = createMeeting.isPending;
 
   return (
-    <>
-      <NewAgentDialog
-        open={openNewAgentDialog}
-        onOpenChange={setOpenNewAgentDialog}
-      />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Meeting Name</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Enter meeting name"
+                  {...field}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <Form {...form}>
-        <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="flex justify-center">
-            <GeneratedAvatar
-              seed={form.watch("name") || "meeting"}
-              variant="botttsNeutral"
-              className="border size-16"
-            />
-          </div>
-
-          <FormField
-            name="name"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="e.g. Math consultations"
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            name="agentId"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Agent</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={isPending}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an agent" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {agentsData?.items?.map((agent) => {
-                      const emoji = getAgentEmoji(agent.name);
-                      return (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{emoji}</span>
-                            <span>{agent.name}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  Not found what you&apos;re looking for?{" "}
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setOpenNewAgentDialog(true)}
-                  >
-                    Create new agent
-                  </button>
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex justify-between gap-x-2 pt-2">
-            {onCancel && (
-              <Button
-                variant="ghost"
-                disabled={isPending}
-                type="button"
-                onClick={onCancel}
+        <FormField
+          control={form.control}
+          name="agentId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Agent</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                disabled={isLoading}
               >
-                Cancel
-              </Button>
-            )}
-            <Button disabled={isPending} type="submit" className="ml-auto">
-              {isPending
-                ? isEdit
-                  ? "Updating..."
-                  : "Creating..."
-                : isEdit
-                  ? "Update"
-                  : "Create"}
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an agent" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {agents.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      No agents available. Create one first.
+                    </div>
+                  ) : (
+                    agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Choose which AI agent will join this meeting
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="scheduledFor"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Scheduled Time (Optional)</FormLabel>
+              <FormControl>
+                <Input type="datetime-local" {...field} disabled={isLoading} />
+              </FormControl>
+              <FormDescription>
+                When should this meeting take place?
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Optional)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Add meeting notes or agenda..."
+                  className="min-h-24"
+                  {...field}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-between gap-2 pt-4">
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isLoading}
+            >
+              Cancel
             </Button>
-          </div>
-        </form>
-      </Form>
-    </>
+          )}
+          <Button
+            type="submit"
+            disabled={isLoading || agents.length === 0}
+            className="ml-auto"
+          >
+            {isLoading ? "Creating..." : "Create Meeting"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 };

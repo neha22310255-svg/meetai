@@ -1,13 +1,12 @@
 import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-
-import { getQueryClient, trpc } from "@/trpc/server";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { MeetingsListHeader } from "@/modules/meetings/ui/components/meetings-list-header";
+import { getQueryClient, trpc } from "@/trpc/server";
+import { auth } from "@/lib/auth";
+
 import {
   MeetingsView,
   MeetingsViewError,
@@ -24,11 +23,17 @@ const Page = async () => {
   }
 
   const queryClient = getQueryClient();
-  void queryClient.prefetchQuery(trpc.meetings.getMany.queryOptions({}));
+
+  // Prefetch meetings data
+  void queryClient.prefetchQuery(
+    trpc.meetings.getMany.queryOptions({
+      page: 1,
+      pageSize: 100,
+    }),
+  );
 
   return (
-    <>
-      <MeetingsListHeader />
+    <div className="flex flex-col h-full">
       <HydrationBoundary state={dehydrate(queryClient)}>
         <Suspense fallback={<MeetingsViewLoading />}>
           <ErrorBoundary fallback={<MeetingsViewError />}>
@@ -36,7 +41,7 @@ const Page = async () => {
           </ErrorBoundary>
         </Suspense>
       </HydrationBoundary>
-    </>
+    </div>
   );
 };
 
