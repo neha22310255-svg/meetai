@@ -4,18 +4,18 @@ import { useState } from "react";
 import { PlusIcon, XCircleIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { NewAgentDialog } from "@/modules/agents/ui/components/new-agent-dialog";
 import { useAgentsFilters } from "../../hooks/use-agents-filters";
-
-const DEFAULT_PAGE = 1;
+import { DEFAULT_PAGE } from "@/constants";
 
 export const AgentsListHeader = () => {
-  const [filters, setFilters] = useAgentsFilters();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [filters, setFilters] = useAgentsFilters();
 
-  const isAnyFilterModified = !!filters.search;
+  const isAnyFilterModified = Boolean(filters.search);
 
-  const onClearFilters = () => {
+  const handleClearFilters = () => {
     setFilters({
       search: "",
       page: DEFAULT_PAGE,
@@ -26,28 +26,42 @@ export const AgentsListHeader = () => {
     <>
       <NewAgentDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
 
-      <div className="py-4 flex flex-col gap-y-4">
+      <div className="py-4 px-4 md:px-8 flex flex-col gap-y-4">
+        {/* Header Section */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">My Agents</h1>
+          <div>
+            <h5 className="text-xl font-medium">My Agents</h5>
+          </div>
 
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <PlusIcon className="size-4 mr-2" />
+          <Button
+            onClick={() => setIsDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <PlusIcon className="h-4 w-4" />
             New Agent
           </Button>
         </div>
 
-        {isAnyFilterModified && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="w-fit"
-          >
-            <XCircleIcon className="size-4 mr-2" />
-            Clear
-          </Button>
-        )}
+        {/* Filters Section */}
+        <ScrollArea className="w-full">
+          <div className="flex items-center gap-x-2 min-w-max pb-2">
+            {isAnyFilterModified && (
+              <Button
+                variant="outline"
+                onClick={handleClearFilters}
+                className="h-9 flex items-center gap-2"
+              >
+                <XCircleIcon className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
     </>
   );
 };
+
+export { AgentsListHeader as AgentsHeader };
