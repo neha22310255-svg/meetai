@@ -1,48 +1,67 @@
 "use client";
 
-import { useState } from "react";
 import { format } from "date-fns";
-import { Clock, MoreVertical, Play } from "lucide-react";
+import { Clock, CircleCheck, CircleX, Loader, Video } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { GeneratedAvatar } from "@/components/generated-avatar";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 
-import type { MeetingGetMany } from "@/modules/meetings/types";
 import { MeetingsHeader } from "../components/meetings-list-header";
+import { DataPagination } from "../components/data-pagination";
+import { MeetingStatus } from "../../types";
+import { useMeetingsFilters } from "../../hooks/use-meetings-filters";
+import type { MeetingGetMany } from "../../types";
 
 export const MeetingsView = () => {
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useMeetingsFilters();
+
+  const page = filters.page ?? 1;
+
+  const search = filters.search ?? "";
+  const setSearch = (value: string) =>
+    setFilters({
+      ...filters,
+      search: value,
+      page: 1,
+    });
 
   const [data] = trpc.meetings.getMany.useSuspenseQuery({
-    page: 1,
-    pageSize: 100,
-    search: search || undefined,
+    page,
+    pageSize: 10,
+    search: filters.search ?? undefined,
+    status: filters.status ?? undefined,
+    agentId: filters.agentId ?? undefined,
   });
 
-  const meetings = data?.items || [];
+  const meetings = data?.items ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
 
-  if (meetings.length === 0 && !search) {
+  const handlePageChange = (newPage: number) => {
+    setFilters({
+      ...filters,
+      page: newPage,
+    });
+  };
+
+  if (
+    meetings.length === 0 &&
+    !filters.search &&
+    !filters.status &&
+    !filters.agentId
+  ) {
     return (
       <div className="flex flex-col h-full">
         <MeetingsHeader total={0} search={search} setSearch={setSearch} />
 
-        <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 text-center">
-          {/* Empty SVG Image */}
-          <div className="relative w-64 h-64 mb-8">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="relative w-48 h-48 mb-6">
             <Image
               src="/empty.svg"
               alt="No meetings"
@@ -52,13 +71,11 @@ export const MeetingsView = () => {
             />
           </div>
 
-          <h3 className="text-xl font-semibold mb-2">
+          <h3 className="text-lg font-semibold mb-2">
             Create your first meeting
           </h3>
           <p className="text-sm text-muted-foreground max-w-md">
-            Schedule a meeting to connect with others. Each meeting lets you
-            collaborate, share ideas, and interact with participants in real
-            time.
+            Schedule a meeting to connect with others.
           </p>
         </div>
       </div>
@@ -66,35 +83,48 @@ export const MeetingsView = () => {
   }
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-8">
-      <MeetingsHeader
-        total={data?.total || 0}
-        search={search}
-        setSearch={setSearch}
-      />
+    <div className="flex flex-col h-full">
+      <MeetingsHeader total={total} search={search} setSearch={setSearch} />
 
-      <div className="mt-6">
-        <p className="text-sm text-muted-foreground mb-4">TODO: Filters</p>
+      <div className="flex-1 p-6 space-y-3 overflow-y-auto">
+        {meetings.map((meeting) => (
+          <MeetingRow key={meeting.id} meeting={meeting} />
+        ))}
 
-        {/* Meetings List */}
-        <div className="space-y-3">
-          {meetings.map((meeting) => (
-            <MeetingRow key={meeting.id} meeting={meeting} />
-          ))}
-        </div>
-
-        {meetings.length === 0 && search && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              No meetings found matching "{search}"
-            </p>
-          </div>
-        )}
+        {meetings.length === 0 &&
+          (filters.search || filters.status || filters.agentId) && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                No meetings found matching your filters
+              </p>
+              <Button
+                variant="link"
+                onClick={() =>
+                  setFilters({
+                    search: null,
+                    status: null,
+                    agentId: null,
+                    page: 1,
+                  })
+                }
+                className="mt-2"
+              >
+                Clear all filters
+              </Button>
+            </div>
+          )}
       </div>
+
+      {meetings.length > 0 && (
+        <DataPagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
     </div>
   );
 };
-
 interface MeetingRowProps {
   meeting: MeetingGetMany[number];
 }
@@ -103,48 +133,61 @@ const MeetingRow = ({ meeting }: MeetingRowProps) => {
   const agentName = meeting.agent?.name || "New Agent";
   const agentAvatar = meeting.agent?.name || "agent";
 
-  const statusConfig: Record<string, { label: string; icon: React.ReactNode }> =
-    {
-      upcoming: { label: "Upcoming", icon: <Clock className="h-3 w-3" /> },
-      active: { label: "Upcoming", icon: <Clock className="h-3 w-3" /> },
-      "in-progress": { label: "Upcoming", icon: <Clock className="h-3 w-3" /> },
-      completed: { label: "Completed", icon: <Clock className="h-3 w-3" /> },
-      processing: { label: "Processing", icon: <Clock className="h-3 w-3" /> },
-      cancelled: { label: "Cancelled", icon: <Clock className="h-3 w-3" /> },
-    };
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case MeetingStatus.Upcoming:
+        return { label: "Upcoming", icon: Clock };
+      case MeetingStatus.Active:
+        return { label: "Active", icon: Video };
+      case MeetingStatus.Completed:
+        return { label: "Completed", icon: CircleCheck };
+      case MeetingStatus.Processing:
+        return { label: "Processing", icon: Loader };
+      case MeetingStatus.Cancelled:
+        return { label: "Cancelled", icon: CircleX };
+      default:
+        return { label: "Upcoming", icon: Clock };
+    }
+  };
 
-  const status = statusConfig[meeting.status] || statusConfig.upcoming;
+  const status = getStatusConfig(meeting.status);
+  const StatusIcon = status.icon;
 
   return (
     <Link href={`/meetings/${meeting.id}`}>
       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors group">
-        {/* Left section: Title and Agent */}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-base group-hover:text-primary transition-colors">
-            {meeting.name}
-          </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <GeneratedAvatar
-              variant="botttsNeutral"
-              seed={agentAvatar}
-              className="h-4 w-4 rounded-full"
-            />
-            <span className="text-sm text-muted-foreground truncate">
-              {agentName}
-            </span>
+        <div className="flex items-center gap-3 min-w-0">
+          <GeneratedAvatar
+            variant="botttsNeutral"
+            seed={agentAvatar}
+            className="h-10 w-10 rounded-full shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-base group-hover:text-primary transition-colors truncate">
+              {meeting.name}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-sm text-muted-foreground truncate">
+                {agentName}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Right section: Status and Duration */}
-        <div className="flex items-center gap-4 ml-4">
+        <div className="flex items-center gap-4 ml-4 shrink-0">
           <Badge variant="outline" className="flex items-center gap-1.5">
-            {status.icon}
+            <StatusIcon className="h-3 w-3" />
             {status.label}
           </Badge>
 
-          <Badge variant="outline" className="flex items-center gap-1.5">
+          <Badge
+            variant="outline"
+            className="flex items-center gap-1.5 whitespace-nowrap"
+          >
             <Clock className="h-3 w-3" />
-            No Duration
+            {meeting.createdAt
+              ? format(new Date(meeting.createdAt), "MMM d, yyyy")
+              : "No date"}
           </Badge>
         </div>
       </div>
@@ -153,7 +196,7 @@ const MeetingRow = ({ meeting }: MeetingRowProps) => {
 };
 
 export const MeetingsViewLoading = () => (
-  <div className="flex flex-col h-full p-4 md:p-8">
+  <div className="flex flex-col h-full">
     <LoadingState
       title="Loading Meetings"
       description="Loading your meetings data..."
@@ -162,7 +205,7 @@ export const MeetingsViewLoading = () => (
 );
 
 export const MeetingsViewError = () => (
-  <div className="flex flex-col h-full p-4 md:p-8">
+  <div className="flex flex-col h-full">
     <ErrorState
       title="Failed to load meetings"
       description="There was an error loading your meetings. Please try again."

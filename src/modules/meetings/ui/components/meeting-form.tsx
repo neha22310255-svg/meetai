@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { trpc } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -32,8 +31,7 @@ const meetingFormSchema = z.object({
     .min(1, "Meeting name is required")
     .max(100, "Name is too long"),
   agentId: z.string().min(1, "Please select an agent"),
-  scheduledFor: z.string().optional(),
-  description: z.string().optional(),
+  // Remove scheduledFor and description from schema
 });
 
 type MeetingFormValues = z.infer<typeof meetingFormSchema>;
@@ -51,8 +49,6 @@ export const MeetingForm = ({ onSuccess, onCancel }: MeetingFormProps) => {
     defaultValues: {
       name: "",
       agentId: "",
-      scheduledFor: "",
-      description: "",
     },
   });
 
@@ -86,8 +82,7 @@ export const MeetingForm = ({ onSuccess, onCancel }: MeetingFormProps) => {
     createMeeting.mutate({
       name: values.name,
       agentId: values.agentId,
-      scheduledFor: values.scheduledFor || undefined,
-      description: values.description || undefined,
+      // Remove scheduledFor and description
     });
   };
 
@@ -152,41 +147,7 @@ export const MeetingForm = ({ onSuccess, onCancel }: MeetingFormProps) => {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="scheduledFor"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Scheduled Time (Optional)</FormLabel>
-              <FormControl>
-                <Input type="datetime-local" {...field} disabled={isLoading} />
-              </FormControl>
-              <FormDescription>
-                When should this meeting take place?
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description (Optional)</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Add meeting notes or agenda..."
-                  className="min-h-24"
-                  {...field}
-                  disabled={isLoading}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Remove scheduledFor and description fields */}
 
         <div className="flex justify-between gap-2 pt-4">
           {onCancel && (
