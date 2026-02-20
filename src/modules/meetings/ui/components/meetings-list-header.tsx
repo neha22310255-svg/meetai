@@ -14,30 +14,24 @@ import { DEFAULT_PAGE } from "@/constants";
 
 interface MeetingsHeaderProps {
   total: number;
-  search: string;
-  setSearch: (value: string) => void;
 }
 
-export const MeetingsHeader = ({
-  total,
-  search,
-  setSearch,
-}: MeetingsHeaderProps) => {
+export const MeetingsHeader = ({ total }: MeetingsHeaderProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filters, setFilters] = useMeetingsFilters();
 
   const isAnyFilterModified =
-    !!filters.status || !!filters.search || !!filters.agentId;
+    Boolean(filters.status) ||
+    Boolean(filters.search) ||
+    Boolean(filters.agentId);
 
   const onClearFilters = () => {
     setFilters({
       status: null,
-      agentId: "",
-      search: "",
+      agentId: null,
+      search: null,
       page: DEFAULT_PAGE,
     });
-
-    setSearch("");
   };
 
   return (
@@ -45,7 +39,6 @@ export const MeetingsHeader = ({
       <NewMeetingDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
 
       <div className="py-4 px-4 md:px-8 flex flex-col gap-y-4">
-        {/* Top Section */}
         <div className="flex items-center justify-between">
           <div>
             <h5 className="font-medium text-xl">My Meetings</h5>
@@ -63,14 +56,15 @@ export const MeetingsHeader = ({
           </Button>
         </div>
 
-        {/* Filters Section */}
         <ScrollArea className="w-full">
           <div className="flex items-center gap-x-2 min-w-max pb-2">
             <MeetingsSearchFilter />
             <StatusFilter />
             <AgentIdFilter />
+
             {isAnyFilterModified && (
               <Button
+                type="button"
                 variant="outline"
                 onClick={onClearFilters}
                 className="h-9 flex items-center gap-x-2"
