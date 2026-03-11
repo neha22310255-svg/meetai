@@ -123,8 +123,18 @@ export const MeetingIdView = ({ meetingId }: Props) => {
       utils.meetings.getMany.invalidate();
       router.push("/meetings");
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete meeting");
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to delete meeting");
+    },
+  });
+
+  const cancelMeeting = trpc.meetings.update.useMutation({
+    onSuccess: () => {
+      toast.success("Meeting cancelled");
+      utils.meetings.getOne.invalidate({ id: meetingId });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to cancel meeting");
     },
   });
 
@@ -132,6 +142,13 @@ export const MeetingIdView = ({ meetingId }: Props) => {
     const ok = await confirmRemove();
     if (!ok) return;
     removeMeeting.mutate({ id: meetingId });
+  };
+
+  const handleCancelMeeting = () => {
+    cancelMeeting.mutate({
+      id: meetingId,
+      status: "cancelled",
+    });
   };
 
   if (isLoading || !data) {
@@ -147,11 +164,13 @@ export const MeetingIdView = ({ meetingId }: Props) => {
   return (
     <>
       <RemoveConfirmation />
+
       <UpdateMeetingDialog
         open={updateOpen}
         onOpenChange={setUpdateOpen}
         initialValues={data}
       />
+
       <div className="flex-1 py-4 px-4 md:px-8 flex flex-col gap-y-4">
         <MeetingIdViewHeader
           meetingId={meetingId}
@@ -159,12 +178,27 @@ export const MeetingIdView = ({ meetingId }: Props) => {
           onEdit={() => setUpdateOpen(true)}
           onRemove={handleRemove}
         />
+
         {isCancelled && <CancelledState />}
+
         {isProcessing && <ProcessingState />}
+
         {isCompleted && <div>Completed</div>}
+
         {isActive && <ActiveState meetingId={meetingId} />}
+
         {isUpcoming && <UpcomingState meetingId={meetingId} />}
       </div>
     </>
+  );
+};
+
+export const MeetingIdViewLoading = () => {
+  return <div className="p-6">Loading meeting...</div>;
+};
+
+export const MeetingIdViewError = () => {
+  return (
+    <div className="p-6">Something went wrong while loading the meeting.</div>
   );
 };
